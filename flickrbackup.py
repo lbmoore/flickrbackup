@@ -104,11 +104,11 @@ class Photo(object):
 
 class FlickrBackup(object):
 
-    def __init__(self, destination, store_once=False, keep_existing=False, retry=1, verbose=False, threadpoolsize=7):
+    def __init__(self, destination, store_once=False, keep_existing=False, retries=1, verbose=False, threadpoolsize=7):
         self.destination = destination
         self.store_once = store_once
         self.keep_existing = keep_existing
-        self.retry = retry
+        self.retries = retries
         self.verbose = verbose
         self.threadpoolsize = threadpoolsize
 
@@ -244,7 +244,7 @@ class FlickrBackup(object):
         thread_pool.wait()
 
         if items_with_errors:
-            logger.warning("%d items could not be downloaded. Retrying %d times.", len(items_with_errors), self.retry)
+            logger.warning("%d items could not be downloaded. Retrying %d times.", len(items_with_errors), self.retries)
             return self.retry(items_with_errors, error_file=error_file)
 
         return True
@@ -288,7 +288,7 @@ class FlickrBackup(object):
 
         if items_with_errors:
             if self.verbose:
-                logger.warning("%d items could not be downloaded. Retrying %d times", len(items_with_errors), self.retry)
+                logger.warning("%d items could not be downloaded. Retrying %d times", len(items_with_errors), self.retries)
             return self.retry(items_with_errors, error_file=error_file)
 
         return True
@@ -345,7 +345,7 @@ class FlickrBackup(object):
 
     def retry(self, items_with_errors, error_file=None):
         retry_count = 0
-        while retry_count < self.retry:
+        while retry_count < self.retries:
             # Retry, this time without threading
             retry_count += 1
 
@@ -362,7 +362,7 @@ class FlickrBackup(object):
                 break
 
         if items_with_errors:
-            logger.error("Download of the following items did not succeed, even after %d retries: %s", self.retry, ' '.join([photo.id for photo in items_with_errors]))
+            logger.error("Download of the following items did not succeed, even after %d retries: %s", self.retries, ' '.join([photo.id for photo in items_with_errors]))
             if error_file:
                 with open(error_file, 'a') as ef:
                     print(photo.id, file=ef)
@@ -386,7 +386,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='Log progress information')
     parser.add_argument('-o', '--store-once', action='store_true', help='Only store photos once, even if they appear in multiple sets')
     parser.add_argument('-k', '--keep-existing', action='store_true', help='Keep existing photos (default is to replace in case they have changed)')
-    parser.add_argument('-r', '--retry', type=int, default=1, help='Retry download of failed images N times default is to retry once)')
+    parser.add_argument('-r', '--retries', type=int, default=1, help='Retry download of failed images N times default is to retry once)')
     parser.add_argument('-e', '--error-file', help='Append ids of erroneous items to this file, to allow retry later')
     parser.add_argument('-d', '--download', metavar='FILE', help='Attempt to download the photos with the ids in the given file, one per line (usually saved by the --error-file option)')
     parser.add_argument('-l', '--log-file', help='Log warnings and errors to the given file')
@@ -434,7 +434,7 @@ def main():
         backup = FlickrBackup(destination,
                 store_once=arguments.store_once,
                 keep_existing=arguments.keep_existing,
-                retry=arguments.retry,
+                retries=arguments.retries,
                 verbose=arguments.verbose
             )
         success = backup.download(ids, arguments.error_file)
@@ -462,7 +462,7 @@ def main():
         backup = FlickrBackup(destination,
                 store_once=arguments.store_once,
                 keep_existing=arguments.keep_existing,
-                retry=arguments.retry,
+                retries=arguments.retries,
                 verbose=arguments.verbose
             )
         success = backup.run(from_date, arguments.error_file)
